@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yuma - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        
+        body { font-family: 'Space Grotesk', system-ui, sans-serif; background-color: #050505; }
+        body, .glass-card, button, div, span, p, h1, h2, a, i, input { transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* --- Исправления Светлой Темы --- */
+        body.light-theme { background-color: #f1f5f9; color: #1e293b; }
+        body.light-theme .glass-card { background: rgba(255, 255, 255, 0.9); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
+        body.light-theme .bg-grid { background-image: linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px); }
+        
+        /* Делаем логотип темным в светлой теме */
+        body.light-theme .main-logo { filter: invert(1) brightness(0.2); }
+        
+        /* Кнопки и селекторы в светлой теме */
+        body.light-theme #adminLangSelect, 
+        body.light-theme #logoutBtn { 
+            background-color: #ffffff; 
+            border-color: #cbd5e1; 
+            color: #334155; 
+        }
+        body.light-theme #logoutBtn:hover { background-color: #fee2e2; color: #ef4444; }
+
+        body.light-theme .text-zinc-100, body.light-theme .text-zinc-200, body.light-theme .text-zinc-300 { color: #1e293b !important; }
+        body.light-theme .text-zinc-400, body.light-theme .text-zinc-500 { color: #64748b !important; }
+        body.light-theme input { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+
+        /* --- Переключатель темы --- */
+        #themeToggle { background-color: #27272a; }
+        #themeThumb { transform: translateX(4px); }
+        body.light-theme #themeToggle { background-color: #cbd5e1; border-color: #94a3b8; }
+        body.light-theme #themeThumb { transform: translateX(32px); background-color: #ffffff; }
+        /* ------------------------------- */
+
+        .glass-card {
+            background: rgba(30, 30, 35, 0.6); border-radius: 1.25rem; position: relative; overflow: hidden;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        .glass-card::after {
+            content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 2px; 
+            background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), #ef4444 0%, #f97316 40%, #eab308 70%, transparent 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+            opacity: 0; transition: opacity 0.4s ease; pointer-events: none;
+        }
+        .glass-card:hover::after { opacity: 1; }
+
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 30%, transparent 80%);
+        }
+
+        .tab-btn { color: #a1a1aa; white-space: nowrap; position: relative; padding-bottom: 12px; font-weight: 600; font-size: 0.875rem; }
+        .tab-btn.active { color: #f97316; }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #f97316, #ef4444); border-radius: 3px; }
+
+        .order-card { border-left: 5px solid #ccc; }
+        .order-card.status-pending { border-left-color: #f97316; }
+        .order-card.status-in_progress { border-left-color: #38bdf8; }
+        .order-card.status-ready_delivery { border-left-color: #22c55e; }
+        .order-card.status-completed { border-left-color: #94a3b8; }
+        .order-card.status-rejected { border-left-color: #ef4444; }
+    </style>
+</head>
+<body class="text-zinc-300 min-h-screen relative z-0">
+    <div class="fixed inset-0 z-[-1] pointer-events-none">
+        <div class="absolute inset-0 bg-grid"></div>
+    </div>
+
+    <div id="login-screen" class="min-h-screen flex flex-col justify-center items-center px-4">
+        <div class="glass-card bg-zinc-900/80 p-8 w-full max-w-md text-center space-y-6">
+            <img class="h-14 mx-auto main-logo" src="https://yumafergana.uz/images/yuma-logo.png" alt="Yuma Logo">
+            <h2 class="text-2xl font-bold text-zinc-100">Yuma Control</h2>
+            <form id="loginForm" class="space-y-4 text-left">
+                <input type="email" id="loginEmail" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-orange-500" placeholder="Email" required>
+                <input type="password" id="loginPassword" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-orange-500" placeholder="Пароль" required>
+                <button type="submit" class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:opacity-90">Войти</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-screen" class="hidden">
+        <header class="glass-card m-4 p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <img class="h-10 main-logo" src="https://yumafergana.uz/images/yuma-logo.png" alt="Yuma Logo">
+                <span class="text-orange-500 font-bold text-sm tracking-widest border-l border-white/10 pl-4 hidden sm:inline">ADMIN PANEL</span>
+            </div>
+            <div class="flex items-center gap-3 sm:gap-4">
+                <button id="themeToggle" type="button" title="Переключить тему" class="relative inline-flex h-7 w-14 items-center rounded-full border border-white/10 transition-colors focus:outline-none cursor-pointer">
+                    <span class="absolute inset-0 flex items-center justify-between px-1.5 pointer-events-none">
+                        <i class="fa-solid fa-moon text-[11px] text-zinc-400"></i>
+                        <i class="fa-solid fa-sun text-[11px] text-yellow-500"></i>
+                    </span>
+                    <span id="themeThumb" class="inline-block h-5 w-5 rounded-full bg-white transition duration-300 ease-in-out z-10 shadow-sm"></span>
+                </button>
+
+                <select id="adminLangSelect" class="bg-zinc-800 text-zinc-200 text-sm px-3 py-2 rounded-xl border border-white/10 outline-none font-bold cursor-pointer">
+                    <option value="ru">Русский</option>
+                    <option value="uz">O'zbekcha</option>
+                    <option value="en">English</option>
+                </select>
+                <button id="logoutBtn" class="text-sm font-bold text-zinc-300 bg-zinc-800 border border-white/10 px-3 py-2 rounded-xl hover:bg-zinc-700 transition">
+                    <i class="fa-solid fa-power-off"></i> <span class="hidden sm:inline">Выйти</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="mx-4 mb-4 overflow-x-auto flex gap-6 px-2 border-b border-white/10" id="tabsContainer">
+            <button class="tab-btn active" data-status="pending">Ожидают</button>
+            <button class="tab-btn" data-status="in_progress">Готовка</button>
+            <button class="tab-btn" data-status="ready_delivery">В пути</button>
+            <button class="tab-btn" data-status="completed">Завершенные</button>
+            <button class="tab-btn" data-status="rejected">Отказанные</button>
+            <button class="tab-btn" data-status="all">Все</button>
+        </div>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 p-4" id="ordersGrid"></main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBR3rLYp-cpq9nYsDKwwdbTziLr1w0qxn8",
+            authDomain: "jwiidid.firebaseapp.com",
+            databaseURL: "https://jwiidid-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "jwiidid",
+            storageBucket: "jwiidid.firebasestorage.app",
+            messagingSenderId: "163956366428",
+            appId: "1:163956366428:web:d209e93e59eeada258da99"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- ДАННЫЕ ПЕРЕВОДОВ ---
+        const raw_dishes = [
+            ["cat5",5000,"dish_1765363940_6751.jpg","Qora kofe","Черный кофе","Black coffee"],
+            ["cat5",5000,"dish_1765364058_2880.jpg","Sutli kofe","Кофе с молоком","Coffee with milk"],
+            ["cat5",5000,"dish_1765707556_6510.jpeg","Choy oddiy","Обычный чай","Black/Green tea"],
+            ["cat5",7000,"dish_1765707613_1914.jpeg","Choy limonli","Чай с лимоном","Lemon tea"],
+            ["cat5",10000,"dish_1765707631_5529.jpeg","Choy limon, novvot","Чай с лимоном и наватом","Tea with lemon & navat"],
+            ["cat5",9000,"dish_1765364335_2939.jpg","Cola razliv","Кола на розлив","Draft Cola"],
+            ["cat5",17000,"dish_1765364387_6141.jpg","Cola 1.5L","Кола 1.5Л","Cola 1.5L"],
+            ["cat5",9000,"dish_1765364429_4703.jpg","Fanta 0.5L","Фанта 0.5Л","Fanta 0.5L"],
+            ["cat5",16000,"dish_1765364476_9021.jpg","Sok","Сок","Juice"],
+            ["cat5",4000,"dish_1765364551_4444.jpg","Family 0.5L","Family 0.5Л","Family 0.5L"],
+            ["cat14",25000,"dish_1765364789_4720.jpg","Malina choy","Малиновый чай","Raspberry tea"],
+            ["cat14",25000,"dish_1765364881_2236.jpg","Imbir choy","Имбирный чай","Ginger tea"],
+            ["cat14",25000,"dish_1765381712_8228.jpeg","Marokash choy","Марокканский чай","Moroccan tea"],
+            ["cat14",25000,"dish_1765382113_1673.jpeg","Yovvoyi gilosli choy","Чай с дикой вишней","Wild cherry tea"],
+            ["cat14",28000,"dish_1765382174_3637.jpeg","Oblepixa choyi","Облепиховый чай","Sea buckthorn tea"],
+            ["cat14",27000,"dish_1765382441_6479.jpeg","Sitrusli choy","Цитрусовый чай","Citrus tea"],
+            ["cat13",19000,"dish_1765382700_2213.jpeg","Kapuchino","Капучино","Cappuccino"],
+            ["cat13",18000,"dish_1765382784_7610.jpeg","Amerikano","Американо","Americano"],
+            ["cat13",14000,"dish_1765382900_4588.jpeg","Espresso","Эспрессо","Espresso"],
+            ["cat13",23000,"dish_1765382986_9651.jpeg","Latte","Латте","Latte"],
+            ["cat13",23000,"dish_1765383183_6079.jpeg","Flat White","Флэт Уайт","Flat White"],
+            ["cat13",24000,"dish_1765383249_2225.jpeg","Mokachino","Мокачино","Mochaccino"],
+            ["cat13",20000,"dish_1765647372_2629.jpeg","Muzli latte","Айс латте","Iced Latte"],
+            ["cat13",18000,"dish_1765647451_9058.jpeg","Muzli americano","Айс американо","Iced Americano"],
+            ["cat15",21000,"dish_1765647830_7608.jpeg","Mojito classic 0.5","Мохито классик 0.5","Classic Mojito 0.5"],
+            ["cat15",31000,"dish_1765647927_3804.jpeg","Mojito classic 1 L","Мохито классик 1Л","Classic Mojito 1L"],
+            ["cat15",23000,"dish_1765648141_4249.jpeg","Mojito qulupnayli 0,5","Клубничный мохито 0.5","Strawberry Mojito 0.5"],
+            ["cat15",32000,"dish_1765648244_3474.jpeg","Mojito qulupnayli 1L","Клубничный мохито 1Л","Strawberry Mojito 1L"],
+            ["cat15",24000,"dish_1765648992_8972.jpeg","Bablchoy: qulupnay, sutli","Бабл-ти: клубника, молоко","Bubble tea: strawberry, milk"],
+            ["cat15",24000,"dish_1765649820_9849.jpeg","Bablchoy: sitrus, meva","Бабл-ти: цитрус, фрукты","Bubble tea: citrus, fruit"],
+            ["cat15",22000,"dish_1765708876_2457.jpeg","Ice tea: apelsinli, malinali","Айс-ти: апельсин, малина","Ice tea: orange, raspberry"],
+            ["cat16",23000,"dish_1765384228_8925.png","Tuxum va kolbasa","Яичница с колбасой","Eggs and sausage"],
+            ["cat16",23000,"dish_1765393690_1646.jpg","Qirollik lazzati","Королевское наслаждение","Royal delight"],
+            ["cat16",20000,"dish_1765644886_8081.jpeg","Blinchiklar","Блинчики","Pancakes"],
+            ["cat16",23000,"dish_1765644909_2431.jpeg","Kolbasali omlet","Омлет с колбасой","Omelette with sausage"],
+            ["cat16",15000,"dish_1765384865_4858.jpeg","Non assortisi","Ассорти хлеба","Bread basket"],
+            ["cat16",35000,"dish_1765644954_7116.jpeg","Turkcha taom","Турецкое блюдо","Turkish dish"],
+            ["cat16",23000,"dish_1765385987_5382.jpeg","Sutli jo‘xori nonushtasi","Кукурузная каша на молоке","Milk corn porridge"],
+            ["cat16",22000,"dish_1765386159_9486.jpeg","Sutli manna nonushtasi","Манная каша на молоке","Milk semolina porridge"],
+            ["cat16",25000,"dish_1765386245_1949.jpeg","Okroshka taomi","Окрошка","Okroshka"],
+            ["cat16",25000,"dish_1765386336_8420.jpeg","Gaspacho taomi","Гаспачо","Gazpacho"],
+            ["cat16",23000,"dish_1765386411_2065.jpeg","Sutli guruch taomi","Рисовая каша на молоке","Milk rice porridge"],
+            ["cat16",35000,"dish_1765644987_6949.jpeg","Rukola salati (mol go’shti)","Салат с рукколой (говядина)","Arugula salad (beef)"],
+            ["cat16",35000,"dish_1765393096_3972.jpg","Qovurilgan baklajan","Жареные баклажаны","Fried eggplants"],
+            ["cat16",35000,"dish_1765387075_4632.jpeg","Italiancha baklajan taomi","Баклажаны по-итальянски","Italian eggplants"],
+            ["cat16",35000,"dish_1765645073_8190.jpeg","Kobb salati","Кобб салат","Cobb salad"],
+            ["cat16",25000,"dish_1765394104_2020.jpg","Mini mozzarella","Мини моцарелла","Mini mozzarella"],
+            ["cat16",28000,"dish_1765387545_6398.jpeg","Smak","Смак","Smak salad"],
+            ["cat16",34000,"dish_1765394218_1940.jpg","Bavariya salati","Баварский салат","Bavarian salad"],
+            ["cat16",33000,"dish_1765394456_7841.webp","Sezar salati(tovuqli)","Цезарь (с курицей)","Caesar salad (chicken)"],
+            ["cat16",36000,"dish_1765394606_7510.jpeg","Yaponskie","Японский салат","Japanese salad"],
+            ["cat16",36000,"dish_1765394817_3219.jpg","Nezhnost","Нежность","Tenderness salad"],
+            ["cat16",28000,"dish_1765394873_9480.jpg","Tay salati","Тайский салат","Thai salad"],
+            ["cat16",35000,"dish_1765388713_9012.jpeg","Issiq til salati","Теплый салат с языком","Warm tongue salad"],
+            ["cat16",30000,"dish_1765388870_4558.jpeg","Lambik","Ламбик","Lambic salad"],
+            ["cat16",22000,"dish_1765396277_3401.jpg","Grek salati","Греческий салат","Greek salad"],
+            ["cat16",25000,"dish_1765396337_1521.jpg","Fransuz salati","Французский салат","French salad"],
+            ["cat16",25000,"dish_1765397358_6368.jpg","Norin(170gram)","Нарын (170гр)","Naryn (170g)"],
+            ["cat16",36000,"dish_1765396504_9529.jpg","Qarsildoq baqlajon salati","Салат Хрустящие баклажаны","Crispy eggplant salad"],
+            ["cat16",13000,"dish_1765396642_2804.webp","Shakarop","Шакароп","Shakarop"],
+            ["cat16",40000,"dish_1765397384_6974.jpg","Ruletka baqlajon","Рулетики из баклажанов","Eggplant rolls"],
+            ["cat16",20000,"dish_1765397401_1376.jpg","Gruzinskie salat","Грузинский салат","Georgian salad"],
+            ["cat16",31000,"dish_1765397128_3623.jpg","Olivia mol go'shtidan","Оливье с говядиной","Olivier with beef"],
+            ["cat16",32000,"dish_1765397230_1291.jpg","Mujskoy kapriz","Мужской каприз","Male whim salad"],
+            ["cat16",29000,"dish_1765397281_7439.jpg","Olivia tovuq go'shtidan","Оливье с курицей","Olivier with chicken"],
+            ["cat16",13000,"dish_1765397307_6830.png","Suzma","Сузьма","Suzma"],
+            ["cat7",29000,"dish_1765397870_3165.jpg","Solyanka","Солянка","Solyanka"],
+            ["cat7",26000,"dish_1765397921_9405.jpg","Tovuqdan lapsha","Куриная лапша","Chicken noodle soup"],
+            ["cat7",25000,"dish_1765397996_6054.jpg","Chechevichniy sho'rva","Чечевичный суп","Lentil soup"],
+            ["cat7",30000,"dish_1765398050_6804.jpg","Sirli sho'rva","Сырный суп","Cheese soup"],
+            ["cat7",27000,"dish_1765398141_3135.jpg","Frikadelka sho'rva","Суп с фрикадельками","Meatball soup"],
+            ["cat7",32000,"dish_1765398201_6436.jpg","Chuchvara","Чучвара","Chuchvara (Dumpling soup)"],
+            ["cat7",29000,"dish_1765398253_7456.jpg","Borsh","Борщ","Borscht"],
+            ["cat11",24000,"dish_1765607404_4602.jpeg","Lavash mini(mol)","Мини лаваш (говядина)","Mini lavash (beef)"],
+            ["cat11",28000,"dish_1765607440_2197.jpeg","Lavash mini sirli(mol)","Мини сырный лаваш (говядина)","Mini cheese lavash (beef)"],
+            ["cat11",30000,"dish_1765607458_5140.jpeg","Lavash(mol go'shti)","Лаваш (говядина)","Lavash (beef)"],
+            ["cat11",33000,"dish_1765607476_4921.jpeg","Lavash sirli(mol)","Сырный лаваш (говядина)","Cheese lavash (beef)"],
+            ["cat11",23000,"dish_1765607574_7333.jpeg","Lavash mini(tovuq)","Мини лаваш (курица)","Mini lavash (chicken)"],
+            ["cat11",24000,"dish_1765607591_6892.jpeg","Lavash mini sirli(tovuq)","Мини сырный лаваш (курица)","Mini cheese lavash (chicken)"],
+            ["cat11",25000,"dish_1765607604_5242.jpeg","Lavash(tovuq)","Лаваш (курица)","Lavash (chicken)"],
+            ["cat11",27000,"dish_1765607621_8846.jpeg","Lavash sirli(tovuq)","Сырный лаваш (курица)","Cheese lavash (chicken)"],
+            ["cat11",31000,"dish_1765607751_5473.jpeg","Shaurma 0.5(mol)","Шаурма 0.5 (говядина)","Shawarma 0.5 (beef)"],
+            ["cat11",26000,"dish_1765607828_8185.jpeg","Shaurma 0.5(tovuq)","Шаурма 0.5 (курица)","Shawarma 0.5 (chicken)"],
+            ["cat11",25000,"dish_1765608165_9194.png","Shaurma 3/1(mol)","Шаурма 3/1 (говядина)","Shawarma 3/1 (beef)"],
+            ["cat11",23000,"dish_1765608200_1836.png","Shaurma 3/1(tovuq)","Шаурма 3/1 (курица)","Shawarma 3/1 (chicken)"],
+            ["cat11",35000,"dish_1765608152_5465.jpeg","Non kabob 0.5","Нон кабоб 0.5","Bread kebab 0.5"],
+            ["cat11",28000,"dish_1765608049_1678.jpeg","Non kabob 3/1","Нон кабоб 3/1","Bread kebab 3/1"],
+            ["cat11",25000,"dish_1765640894_4217.jpeg","Donar bulochka(mol)","Дonaр в булочке (говядина)","Doner bun (beef)"],
+            ["cat11",22000,"dish_1765640917_3724.jpeg","Donar bulochka(tovuq)","Дonaр в булочке (курица)","Doner bun (chicken)"],
+            ["cat11",37000,"dish_1765468153_3667.jpg","Durum","Дюрюм","Durum"],
+            ["cat11",16000,"dish_1765643045_3486.png","Xotdog sosiskali","Хот-дог с сосиской","Hot dog with sausage"],
+            ["cat11",18000,"dish_1765643096_7567.png","Xotdog kolbasali","Хот-дог с колбасой","Hot dog with salami"],
+            ["cat11",19000,"dish_1765643121_6728.png","Xotdog sosiskali 2x","Двойной хот-дог с сосиской","Double sausage hot dog"],
+            ["cat11",23000,"dish_1765643155_3073.png","Xotdog kolbasali 2x","Двойной хот-дог с колбасой","Double salami hot dog"],
+            ["cat11",22000,"dish_1765643172_7669.png","Xotdog sosiskali sirli 2x","Двойной сырный хот-дог","Double cheese hot dog"],
+            ["cat11",21000,"dish_1765643195_6765.png","Non kolbasali","Хлеб с колбасой","Bread with salami"],
+            ["cat11",27000,"dish_1765643219_3685.png","Gamburger","Гамбургер","Hamburger"],
+            ["cat11",30000,"dish_1765643289_9522.png","Chizburger","Чизбургер","Cheeseburger"],
+            ["cat11",25000,"dish_1765643314_2337.png","Bigmak","Бигмак","Big Mac"],
+            ["cat11",40000,"dish_1765643335_4453.png","Double chiz","Дабл чизбургер","Double cheeseburger"],
+            ["cat11",24000,"dish_1765643362_8936.png","Chicken burger","Чикенбургер","Chicken burger"],
+            ["cat11",24000,"dish_1765643388_3040.png","Longer","Лонгер","Longer"],
+            ["cat11",23000,"dish_1765643587_1119.png","Koroleveskie","Королевский бургер","Royal burger"],
+            ["cat11",33000,"dish_1765473970_7198.jpg","Tovuq qanotlari","Куриные крылышки","Chicken wings"],
+            ["cat11",37000,"dish_1765473970_7198.jpg","Naggets","Наггетсы","Nuggets"],
+            ["cat11",37000,"dish_1765474087_8107.jpg","Strips","Стрипсы","Strips"],
+            ["cat11",38000,"dish_1765474357_6237.jpg","Klab sendvich tovuq","Клаб сэндвич (курица)","Club sandwich (chicken)"],
+            ["cat11",41000,"dish_1765474408_1920.jpg","Klab sendvich(mol)","Клаб сэндвич (говядина)","Club sandwich (beef)"],
+            ["cat11",110000,"dish_1765474488_8851.jpg","Tovuq go'sht assorti","Ассорти из курицы","Chicken platter"],
+            ["cat9",10000,"dish_1765475029_7686.jpg","Guruch","Рис","Rice"],
+            ["cat9",7000,"dish_1765644471_3093.png","Kolbasa (1 dona)","Колбаса (1 шт)","Salami (1 pc)"],
+            ["cat9",13000,"dish_1765644531_3445.png","Kotlet (1 dona)","Котлета (1 шт)","Cutlet (1 pc)"],
+            ["cat9",6000,"dish_1765475094_8710.jpg","Sosiska (1 dona)","Сосиска (1 шт)","Sausage (1 pc)"],
+            ["cat9",16000,"dish_1765644803_8333.jpg","Kartoshka derevenskie","Картофель по-деревенски","Potato wedges"],
+            ["cat9",15000,"dish_1765475191_5427.jpg","Kartoshka fri","Картофель фри","French fries"],
+            ["cat9",30000,"dish_1765475238_3647.jpg","Kulcha (1 dona)","Лепешка (1 шт)","Flatbread (1 pc)"],
+            ["cat8",27000,"dish_1765642506_6167.jpeg","Student","Студенческий комбо","Student combo"],
+            ["cat8",43000,"dish_1765642536_3028.jpeg","Naggets mix","Микс наггетсов","Nuggets mix"],
+            ["cat8",38000,"dish_1765642590_8508.jpeg","Kombo shaurma","Комбо шаурма","Shawarma combo"],
+            ["cat8",47000,"dish_1765474746_3916.jpg","Miks","Микс","Mix"],
+            ["cat8",24000,"dish_1765642672_6009.jpeg","Jajji kombo","Детский комбо","Kids combo"],
+            ["cat6",53000,"dish_1765643481_4784.jpeg","Donar v tarelke","Донар на тарелке","Doner on a plate"],
+            ["cat6",51000,"dish_1765643511_5578.jpeg","Mini kotletlar","Мини котлеты","Mini cutlets"],
+            ["cat6",50000,"dish_1765643569_1051.jpeg","Tovuq naggets","Куриные наггетсы","Chicken nuggets"],
+            ["cat6",49000,"dish_1765643635_7168.jpeg","Tovuq palochkalari","Куриные палочки","Chicken sticks"],
+            ["cat6",49000,"dish_1765643192_8117.jpeg","Tovuq filelari","Куриное филе","Chicken fillet"],
+            ["cat6",66000,"dish_1765475808_6957.jpg","Steyk burger","Стейк бургер","Steak burger"],
+            ["cat6",168000,"dish_1765475862_2250.jpg","Go'shtli assorti (3kishili)","Мясное ассорти (на 3х)","Meat platter (for 3)"],
+            ["cat6",238000,"dish_1765475906_3233.jpg","Go'shtli assorti (5kishili)","Мясное ассорти (на 5х)","Meat platter (for 5)"],
+            ["cat6",32000,"dish_1765475925_6051.jpg","Pita","Пита","Pita"],
+            ["cat6",10000,"dish_1765475958_9441.jpg","Olot somsa","Алатская самса","Alat samsa"],
+            ["cat10",53000,"dish_1765398624_3313.jpeg","Pepperoni (M)","Пепперони (M)","Pepperoni (M)"],
+            ["cat10",65000,"dish_1765398761_3958.jpeg","Pepperoni (L)","Пепперони (L)","Pepperoni (L)"],
+            ["cat10",77000,"dish_1765398859_8436.jpeg","Pepperoni (XL)","Пепперони (XL)","Pepperoni (XL)"],
+            ["cat10",44000,"dish_1765398968_9055.jpeg","Qoziqorinli (M)","Грибная (M)","Mushroom (M)"],
+            ["cat10",51000,"dish_1765464627_5805.jpeg","Qoziqorinli (L)","Грибная (L)","Mushroom (L)"],
+            ["cat10",58000,"dish_1765464754_2604.jpeg","Qoziqorinli (XL)","Грибная (XL)","Mushroom (XL)"],
+            ["cat10",52000,"dish_1765465068_8899.jpeg","Assorti (M)","Ассорти (M)","Assorted (M)"],
+            ["cat10",66000,"dish_1765465147_2797.jpeg","Assorti (L)","Ассорти (L)","Assorted (L)"],
+            ["cat10",77000,"dish_1765465225_7101.jpeg","Assorti (XL)","Ассорти (XL)","Assorted (XL)"],
+            ["cat10",47000,"dish_1765465481_4315.jpeg","Ovchilarcha pitsa (M)","Охотничья (M)","Hunter's (M)"],
+            ["cat10",63000,"dish_1765465543_5705.jpeg","Ovchilarcha pitsa (L)","Охотничья (L)","Hunter's (L)"],
+            ["cat10",75000,"dish_1765465618_8909.jpeg","Ovchilarcha pitsa (XL)","Охотничья (XL)","Hunter's (XL)"],
+            ["cat10",37000,"dish_1765466912_4968.jpeg","Margarita (M)","Маргарита (M)","Margherita (M)"],
+            ["cat10",44000,"dish_1765467017_8114.jpeg","Margarita (L)","Маргарита (L)","Margherita (L)"],
+            ["cat10",51000,"dish_1765467399_9636.jpeg","Margarita (XL)","Маргарита (XL)","Margherita (XL)"],
+            ["cat10",63000,"dish_1765467898_9159.jpeg","Qazili (M)","С казы (M)","With Kazy (M)"],
+            ["cat10",75000,"dish_1765468013_9908.jpeg","С казы (L)","With Kazy (L)"],
+            ["cat10",87000,"dish_1765468132_3178.jpeg","Qazili (XL)","С казы (XL)","With Kazy (XL)"],
+            ["cat10",57000,"dish_1765468567_9251.jpeg","Go’shtli (M)","Мясная (M)","Meat (M)"],
+            ["cat10",69000,"dish_1765468791_5442.jpeg","Go’shtli (L)","Мясная (L)","Meat (L)"],
+            ["cat10",81000,"dish_1765468902_7840.jpeg","Go’shtli (XL)","Мясная (XL)","Meat (XL)"],
+            ["cat10",47000,"dish_1765473210_8402.jpeg","Jyulen (M)","Жульен (M)","Julienne (M)"],
+            ["cat10",61000,"dish_1765473335_9147.jpeg","Jyulen (L)","Жульен (L)","Julienne (L)"],
+            ["cat10",73000,"dish_1765473399_7359.jpeg","Jyulen (XL)","Жульен (XL)","Julienne (XL)"],
+            ["cat10",53000,"dish_1765473536_1320.jpeg","Go‘shtli pide","Мясное пиде","Meat pide"],
+            ["cat10",70000,"dish_1765473710_4729.jpeg","Xanskiy pitsa (L)","Ханская пицца (L)","Khan pizza (L)"],
+            ["cat10",83000,"dish_1765473823_8643.jpeg","Xoncha pitsa (XL)","Хонча пицца (XL)","Khoncha pizza (XL)"],
+            ["cat10",53000,"dish_1765474547_6664.jpeg","Donar pitsa (M)","Донар пицца (M)","Doner pizza (M)"],
+            ["cat10",64000,"dish_1765474637_6279.jpeg","Donar pitsa (L)","Донар пицца (L)","Doner pizza (L)"],
+            ["cat10",78000,"dish_1765474712_9100.jpeg","Donar pitsa (XL)","Донар пицца (XL)","Doner pizza (XL)"],
+            ["cat10",47000,"dish_1765474990_3270.jpeg","Adjara","Аджарская","Adjarian"],
+            ["cat10",65000,"dish_1765475613_8621.jpeg","4 mavsum (L)","4 сезона (L)","4 Seasons (L)"],
+            ["cat10",73000,"dish_1765475590_5687.jpeg","4 mavsum (XL)","4 сезона (XL)","4 Seasons (XL)"],
+            ["cat10",50000,"dish_1765398624_3313.jpeg","Kombi (M)","Комби (M)","Combi (M)"],
+            ["cat12",40000,"dish_1765557451_2475.jpeg","Bananli vafli","Банановые вафли","Banana waffles"],
+            ["cat12",70000,"dish_1765557585_5345.jpeg","Qulupnayli vafli","Клубничные вафли","Strawberry waffles"],
+            ["cat12",70000,"dish_1765394594_3991.jpeg","Shokoladli miks","Шоколадный микс","Chocolate mix"],
+            ["cat12",55000,"dish_1765557647_7334.jpeg","Muzqaymoq va mevali","С мороженым и фруктами","With ice cream and fruits"],
+            ["cat12",70000,"dish_1765395017_6191.jpg","Mevali miks","Фруктовый микс","Fruit mix"],
+            ["cat12",55000,"dish_1765557689_3240.jpeg","Mevali","Фруктовые","Fruit"],
+            ["cat17",27000,"dish_1765395461_5154.jpeg","Malina va bananli","Малина и банан","Raspberry & Banana"],
+            ["cat17",21000,"dish_1765395536_5376.jpeg","Mikado","Микадо","Mikado"],
+            ["cat17",23000,"dish_1765395616_2172.jpeg","Smetannik","Сметанник","Smetannik"],
+            ["cat17",24000,"dish_1765395699_2403.jpeg","Napoleon","Наполеон","Napoleon"],
+            ["cat17",19000,"dish_1765395793_1734.jpeg","Medovik","Медовик","Medovik"],
+            ["cat17",19000,"dish_1765395889_8782.jpeg","Praga","Прага","Prague"],
+            ["cat17",23000,"dish_1765395984_8742.jpeg","Snickers","Сникерс","Snickers"],
+            ["cat17",28000,"dish_1765396146_3818.jpeg","Kiyevskiy","Киевский","Kievskiy"],
+            ["cat17",26000,"dish_1765396334_7702.jpeg","Rafaello","Рафаэлло","Raffaello"],
+            ["cat17",25000,"dish_1765396425_5801.jpeg","Shifon","Шифон","Chiffon"],
+            ["cat17",24000,"dish_1765396531_5469.jpeg","Korolevskiy","Королевский"],
+            ["cat17",29000,"dish_1765396577_8028.jpeg","Malibu","Малибу","Malibu"],
+            ["cat18",15000,"dish_1765396954_2787.jpeg","Mevali muzqaymoq","Фруктовое мороженое","Fruit ice cream"],
+            ["cat18",22000,"dish_1765397020_4176.jpeg","Assorti muzqaymoq","Ассорти мороженое","Assorted ice cream"],
+            ["cat18",5000,"dish_1765397152_5900.jpeg","Sutli muzqaymoq","Молочное мороженое","Milk ice cream"],
+            ["cat18",14000,"dish_1765397318_1209.jpeg","Arahis","С арахисом","With peanuts"],
+            ["cat18",12000,"dish_1765397371_5867.jpeg","Oreo","Орео","Oreo"],
+            ["cat18",15000,"dish_1765397459_9590.jpeg","Nutella","Нутелла","Nutella"]
+        ];
+
+        function translateDishName(originalName, targetLang) {
+            const langMap = { uz: 3, ru: 4, en: 5 };
+            const targetIdx = langMap[targetLang];
+            const found = raw_dishes.find(d => 
+                d[3].toLowerCase() === originalName.toLowerCase() || 
+                d[4].toLowerCase() === originalName.toLowerCase() || 
+                d[5].toLowerCase() === originalName.toLowerCase()
+            );
+            return found ? found[targetIdx] : originalName;
+        }
+
+        const adminTranslations = {
+            ru: { pending: "Ожидают принятия", in_progress: "В процессе готовки", ready_delivery: "В пути / Ждут", completed: "Завершенные", rejected: "Отказанные", all: "Все за все время", order: "Заказ", type: "Тип", sum: "Итого", accept: "Принять", progress: "На кухню", ready: "Готов/В путь", complete: "Завершить", reject: "Отклонить", pickup: "🚶 Самовывоз", delivery: "🚗 Доставка" },
+            uz: { pending: "Kutilmoqda", in_progress: "Tayyorlanmoqda", ready_delivery: "Yo'lda / Tayyor", completed: "Yakunlandi", rejected: "Rad etildi", all: "Barchasi", order: "Buyurtma", type: "Turi", sum: "Jami", accept: "Qabul qilish", progress: "Oshxonaga", ready: "Yo'lga / Tayyor", complete: "Yakunlash", reject: "Rad etish", pickup: "🚶 Olib ketish", delivery: "🚗 Yetkazib berish" },
+            en: { pending: "Pending", in_progress: "In Progress", ready_delivery: "Ready / Delivery", completed: "Completed", rejected: "Rejected", all: "All History", order: "Order", type: "Type", sum: "Total", accept: "Accept", progress: "To Kitchen", ready: "Ready/Dispatch", complete: "Complete", reject: "Reject", pickup: "🚶 Pickup", delivery: "🚗 Delivery" }
+        };
+
+        const _ENC_L = 'enUuYW11eUBuaW1kYQ=='; 
+        const _ENC_P = 'c3NuaW1kYTYyMDJhbXV5'; 
+        const _dec = (str) => atob(str).split('').reverse().join('');
+
+        let currentLang = localStorage.getItem('admin_lang') || 'ru';
+        let currentFilter = 'pending';
+        let globalOrders = {};
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('yuma_theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+            } else if (savedTheme === 'dark') {
+                document.body.classList.remove('light-theme');
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                document.body.classList.add('light-theme');
+            }
+        }
+        initTheme();
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const isLight = document.body.classList.toggle('light-theme');
+            localStorage.setItem('yuma_theme', isLight ? 'light' : 'dark');
+        });
+
+        function checkAuthState() {
+            const isLoggedIn = sessionStorage.getItem('yuma_admin_auth') === 'true';
+            document.getElementById('login-screen').classList.toggle('hidden', isLoggedIn);
+            document.getElementById('admin-screen').classList.toggle('hidden', !isLoggedIn);
+            if (isLoggedIn) loadOrdersData();
+        }
+        checkAuthState();
+
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            if (document.getElementById('loginEmail').value === _dec(_ENC_L) && document.getElementById('loginPassword').value === _dec(_ENC_P)) {
+                sessionStorage.setItem('yuma_admin_auth', 'true');
+                checkAuthState();
+            } else alert('Ошибка входа!');
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            sessionStorage.removeItem('yuma_admin_auth');
+            checkAuthState();
+        });
+
+        function loadOrdersData() {
+            onValue(ref(db, 'orders'), (snap) => {
+                globalOrders = snap.val() || {};
+                renderOrders();
+            });
+        }
+
+        function renderOrders() {
+            const grid = document.getElementById('ordersGrid');
+            grid.innerHTML = '';
+            const t = adminTranslations[currentLang];
+
+            Object.keys(globalOrders).sort((a,b) => globalOrders[b].timestamp - globalOrders[a].timestamp).forEach(key => {
+                const order = globalOrders[key];
+                if(currentFilter !== 'all' && order.status !== currentFilter) return;
+
+                const isDelivery = order.deliveryType === 'delivery';
+                
+                const itemsHtml = order.items.map(i => {
+                    const translatedName = translateDishName(i.name, currentLang);
+                    return `<li class="text-sm text-zinc-300 font-medium py-1 border-b border-white/5 last:border-0">
+                        ${translatedName} <span class="float-right text-orange-400 font-bold">x${i.qty}</span>
+                    </li>`;
+                }).join('');
+
+                let buttonsHtml = '';
+                if (order.status === 'pending') {
+                    buttonsHtml = `<button onclick="window.updateOrderStatus('${key}', 'in_progress')" class="flex-1 bg-lime-500 text-black font-bold py-2.5 rounded-xl">${t.accept}</button>
+                                   <button onclick="window.updateOrderStatus('${key}', 'rejected')" class="bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl">${t.reject}</button>`;
+                } else if (order.status === 'in_progress') {
+                    buttonsHtml = `<button onclick="window.updateOrderStatus('${key}', 'ready_delivery')" class="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl">${t.ready}</button>`;
+                } else if (order.status === 'ready_delivery') {
+                    buttonsHtml = `<button onclick="window.updateOrderStatus('${key}', 'completed')" class="w-full bg-zinc-600 text-white font-bold py-3 rounded-xl">${t.complete}</button>`;
+                }
+
+                grid.innerHTML += `
+                    <div class="glass-card p-6 order-card status-${order.status}" onmousemove="window.trackMouse(event, this)">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
+                            <span class="font-black text-lg">${order.id}</span>
+                            <span class="text-xs text-zinc-400 font-semibold">${order.dateStr}</span>
+                        </div>
+                        <div class="mb-4">
+                            <div class="font-bold text-zinc-100"><i class="fa-solid fa-user text-orange-400 mr-2"></i>${order.clientName}</div>
+                            <a href="tel:${order.clientPhone}" class="text-sm text-zinc-400"><i class="fa-solid fa-phone text-sky-400 mr-2"></i>${order.clientPhone}</a>
+                        </div>
+                        <div class="bg-black/30 rounded-xl p-4 mb-4">
+                             <div class="text-xs font-bold text-zinc-500 uppercase mb-2">${isDelivery ? t.delivery : t.pickup}</div>
+                             ${isDelivery ? `<div class="text-sm text-red-400 mb-2">${order.address}</div>` : ''}
+                             <ul>${itemsHtml}</ul>
+                        </div>
+                        <div class="text-right text-lg font-black mb-4">
+                            ${t.sum}: <span class="text-orange-500">${order.totalSum.toLocaleString()} сум</span>
+                        </div>
+                        <div class="flex gap-3">${buttonsHtml}</div>
+                    </div>`;
+            });
+        }
+
+        window.trackMouse = (e, el) => {
+            const rect = el.getBoundingClientRect();
+            el.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+            el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+        };
+
+        window.updateOrderStatus = (key, newStatus) => update(ref(db, 'orders/' + key), { status: newStatus });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.getAttribute('data-status');
+                renderOrders();
+            });
+        });
+
+        document.getElementById('adminLangSelect').addEventListener('change', (e) => {
+            currentLang = e.target.value;
+            localStorage.setItem('admin_lang', currentLang);
+            translateInterface();
+            renderOrders();
+        });
+
+        function translateInterface() {
+            const t = adminTranslations[currentLang];
+            document.getElementById('adminLangSelect').value = currentLang;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                const status = btn.getAttribute('data-status');
+                if(t[status]) btn.innerText = t[status];
+            });
+        }
+        translateInterface();
+    </script>
+</body>
+</html>
